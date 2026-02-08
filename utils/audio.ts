@@ -1,44 +1,38 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer } from 'expo-audio';
 
-let beepSound: Audio.Sound | null = null;
+const beepSource = require('../assets/sounds/beep.wav');
 
-// Create a short beep using expo-av
-export const playBeepSound = async (): Promise<void> => {
+/**
+ * Plays a beep sound using the new expo-audio API (SDK 54+).
+ * @param isBig If true, plays a "bigger" (lower pitch/slower) beep.
+ */
+export const playBeepSound = async (isBig: boolean = false): Promise<void> => {
     try {
-        // Configure audio mode for playback
-        await Audio.setAudioModeAsync({
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: false,
-        });
-
-        // Unload previous sound if exists
-        if (beepSound) {
-            await beepSound.unloadAsync();
-            beepSound = null;
-        }
-
-        // Create the sound from bundled asset
-        const { sound } = await Audio.Sound.createAsync(
-            require('../assets/sounds/beep.wav'),
-            { shouldPlay: true, volume: 1.0 }
-        );
-        beepSound = sound;
-
-        // Clean up after playing
-        sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-                sound.unloadAsync();
-                beepSound = null;
+        const player = createAudioPlayer(beepSource);
+        
+        // Set playback properties
+        player.volume = 1.0;
+        player.setPlaybackRate(isBig ? 0.8 : 1.0);
+        
+        // Listen for completion to clean up
+        const subscription = player.addListener('playbackStatusUpdate', (status) => {
+            if (status.didJustFinish) {
+                subscription.remove();
+                player.remove();
             }
         });
+
+        // Play the sound
+        player.play();
+
     } catch (error) {
         console.log('Failed to play beep sound:', error);
     }
 };
 
+/**
+ * No-op for compatibility as players are now managed per-play in this utility.
+ */
 export const unloadBeepSound = async (): Promise<void> => {
-    if (beepSound) {
-        await beepSound.unloadAsync();
-        beepSound = null;
-    }
+    // In this new implementation, players are removed automatically after playback.
 };

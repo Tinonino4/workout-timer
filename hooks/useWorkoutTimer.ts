@@ -4,7 +4,7 @@ import { getRandomQuote } from '../constants/quotes';
 import { TimerStatus, Workout } from '../types/types';
 import { playBeepSound } from '../utils/audio';
 
-const GET_READY_DURATION = 5;
+const GET_READY_DURATION = 3;
 
 interface UseWorkoutTimerReturn {
     timeLeft: number;
@@ -33,10 +33,14 @@ export const useWorkoutTimer = (workout: Workout | null): UseWorkoutTimerReturn 
 
 
 
-    const playBeep = useCallback(async () => {
+    const playBeep = useCallback(async (isBig: boolean = false) => {
         try {
-            await playBeepSound();
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            await playBeepSound(isBig);
+            await Haptics.notificationAsync(
+                isBig 
+                    ? Haptics.NotificationFeedbackType.Success 
+                    : Haptics.NotificationFeedbackType.Warning
+            );
         } catch (error) {
             console.log('Feedback failed:', error);
         }
@@ -55,6 +59,8 @@ export const useWorkoutTimer = (workout: Workout | null): UseWorkoutTimerReturn 
 
     const transitionToNextPhase = useCallback(() => {
         if (!workout) return;
+
+        playBeep(true);
 
         if (status === 'GET_READY') {
             setStatus('WORK');
@@ -81,7 +87,7 @@ export const useWorkoutTimer = (workout: Workout | null): UseWorkoutTimerReturn 
             setCurrentQuote(getRandomQuote());
             triggerHaptic();
         }
-    }, [workout, status, currentSet, clearTimer, triggerHaptic]);
+    }, [workout, status, currentSet, clearTimer, triggerHaptic, playBeep]);
 
     useEffect(() => {
         if (status === 'IDLE' || status === 'FINISHED' || isPaused) {
@@ -96,8 +102,8 @@ export const useWorkoutTimer = (workout: Workout | null): UseWorkoutTimerReturn 
                     return 0;
                 }
 
-                // Beep at 5, 4, 3, 2, 1 seconds
-                if (prev <= 6 && prev > 1) {
+                // Beep at 3, 2, 1 seconds remaining
+                if (prev <= 4 && prev > 1) {
                     playBeep();
                 }
 
@@ -118,7 +124,8 @@ export const useWorkoutTimer = (workout: Workout | null): UseWorkoutTimerReturn 
         setCurrentSet(1);
         setIsPaused(false);
         setCurrentQuote(getRandomQuote());
-    }, [workout]);
+        playBeep();
+    }, [workout, playBeep]);
 
     const pause = useCallback(() => {
         setIsPaused(true);
